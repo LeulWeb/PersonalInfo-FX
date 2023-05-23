@@ -1,0 +1,90 @@
+/* styles.css */
+
+/* Button style */
+.button {
+    -fx-padding: 10px 20px;
+    -fx-background-color: green;
+    -fx-text-fill: white;
+}
+
+.button:hover {
+    -fx-background-color: darkgreen;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.8), 10, 0.5, 0, 0);
+    -fx-transition-duration: 0.3s;
+    -fx-scale-x: 1.1;
+    -fx-scale-y: 1.1;
+}
+
+/* TextField style */
+.text-field {
+    -fx-border-color: blue;
+    -fx-border-width: 0 0 2px 0;
+    -fx-border-radius: 3px;
+    -fx-padding: 5px;
+    -fx-background-color: green;
+    -fx-text-fill: white;
+}
+
+
+
+/* ListView style */
+.list-view {
+    -fx-background-color: green;
+    -fx-text-fill: white;
+}
+
+/* VBox style */
+.vbox {
+    -fx-background-color: green;
+}
+
+/* MenuBar style */
+.menu-bar {
+    -fx-background-color: green;
+}
+
+/* Menu style */
+.menu {
+    -fx-background-color: green;
+    -fx-text-fill: white;
+}
+
+/* MenuItem style */
+.menu-item {
+    -fx-background-color: green;
+    -fx-text-fill: white;
+}
+
+/* SeparatorMenuItem style */
+.separator-menu-item {
+    -fx-background-color: black;
+}
+
+/* Alert style */
+.alert {
+    -fx-background-color: black;
+    -fx-text-fill: white;
+}
+
+/* Dialog style */
+.dialog-pane {
+    -fx-background-color: black;
+}
+
+/* Dialog Title style */
+.dialog-pane .dialog-pane .header-panel .header {
+    -fx-background-color: black;
+    -fx-text-fill: white;
+}
+
+/* Dialog Content style */
+.dialog-pane .dialog-pane .content {
+
+    -fx-text-fill: black;
+}
+
+/* Dialog Button style */
+.dialog-pane .dialog-pane .button-bar .button {
+    -fx-background-color: black;
+    -fx-text-fill: white;
+}

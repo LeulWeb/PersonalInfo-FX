@@ -1,0 +1,7 @@
+Package: student Info
+Version: 1.0
+Section: java
+Priority: optional
+Architecture: all
+Maintainer: Your Name <leulwebsdev@gmail.com>
+Description: Java Fx
