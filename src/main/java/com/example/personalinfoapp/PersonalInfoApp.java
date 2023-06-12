@@ -12,7 +12,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import java.io.*;
-import java.util.Optional;
+import java.sql.*;
 
 public class PersonalInfoApp extends Application {
     private ObservableList<UserProfile> userProfiles;
@@ -25,6 +25,9 @@ public class PersonalInfoApp extends Application {
     private TextField skillsField;
 
     private static final String FILE_PATH = "user_profiles.txt";
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/personal_info";
+    private static final String DB_USERNAME = "root";
+    private static final String DB_PASSWORD = "";
 
     public static void main(String[] args) {
         launch(args);
@@ -32,19 +35,18 @@ public class PersonalInfoApp extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-
         // Initialize userProfiles list and listView
         userProfiles = FXCollections.observableArrayList();
         listView = new ListView<>(userProfiles);
 
         // Create buttons and set their actions
-        Button addButton = new Button("New Student");
+        Button addButton = new Button("New user");
         addButton.setOnAction(e -> showAddDialog());
 
         Button updateButton = new Button("Update");
         updateButton.setOnAction(e -> showUpdateDialog());
 
-        Button removeButton = new Button("Delete Student");
+        Button removeButton = new Button("Delete user");
         removeButton.setOnAction(e -> removeUserProfile());
 
         Button saveButton = new Button("Save");
@@ -63,16 +65,13 @@ public class PersonalInfoApp extends Application {
         // Apply CSS styles by adding the stylesheet to the scene
         scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
 
-
-
         // Set the scene to the primary stage
         primaryStage.setScene(scene);
-        primaryStage.setTitle("Student Information Manager");
-
+        primaryStage.setTitle("User Information Manager");
         primaryStage.show();
 
-        // Load user profiles from file
-        loadUserProfiles();
+        // Load user profiles from the database
+        loadUserProfilesFromDatabase();
     }
 
     // Creates the application layout with a menu bar and content area
@@ -81,9 +80,8 @@ public class PersonalInfoApp extends Application {
         Text madeBy = new Text("Leul Webshet, Kaleb Asnake, Bereket Hailay, Getachew Degie, Selam Mebratu, Dessi Mulatie");
         madeBy.setStyle("-fx-font-weight: bold");
         VBox footer = new VBox(10, madeBy, info);
-        Text about = new Text("Manage your students with ease in just few click: ");
+        Text about = new Text("Manage your users with ease in just a few clicks");
         BorderPane layout = new BorderPane();
-//        layout.setTop(createMenuBar());
         layout.setTop(about);
         layout.setCenter(content);
         footer.setPadding(new Insets(8));
@@ -92,117 +90,144 @@ public class PersonalInfoApp extends Application {
         return layout;
     }
 
-    // Creates the menu bar with a file menu
-//    private MenuBar createMenuBar() {
-//        MenuBar menuBar = new MenuBar();
-//
-//        Menu fileMenu = new Menu("File");
-//
-//
-//        MenuItem saveMenuItem = new MenuItem("Save");
-//        saveMenuItem.setOnAction(e -> saveUserProfiles());
-//        MenuItem exitMenuItem = new MenuItem("Exit");
-//        exitMenuItem.setOnAction(e -> System.exit(0));
-//        fileMenu.getItems().addAll(saveMenuItem, new SeparatorMenuItem(), exitMenuItem);
-//
-//        menuBar.getMenus().add(fileMenu);
-//
-//        return menuBar;
-//    }
-
     // Shows a dialog for adding a new user profile
     private void showAddDialog() {
         Dialog<UserProfile> dialog = new Dialog<>();
-
-        dialog.setTitle("Register new Student");
+        dialog.setTitle("Register new user");
 
         // Set the button types
-        ButtonType addButton = new ButtonType("Register", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(addButton, ButtonType.CANCEL);
+        ButtonType registerButtonType = new ButtonType("Register", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(registerButtonType, ButtonType.CANCEL);
 
-        GridPane gridPane = createGridPane();
+        // Create the grid layout for the dialog
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
 
-        dialog.getDialogPane().setContent(gridPane);
+        fullNameField = new TextField();
+        hobbyField = new TextField();
+        futurePlanField = new TextField();
+        favoriteMusicField = new TextField();
+        favoriteFilmField = new TextField();
+        skillsField = new TextField();
 
+        grid.add(new Label("Full Name:"), 0, 0);
+        grid.add(fullNameField, 1, 0);
+        grid.add(new Label("Hobby:"), 0, 1);
+        grid.add(hobbyField, 1, 1);
+        grid.add(new Label("Future Plan:"), 0, 2);
+        grid.add(futurePlanField, 1, 2);
+        grid.add(new Label("Favorite Music:"), 0, 3);
+        grid.add(favoriteMusicField, 1, 3);
+        grid.add(new Label("Favorite Film:"), 0, 4);
+        grid.add(favoriteFilmField, 1, 4);
+        grid.add(new Label("Skills:"), 0, 5);
+        grid.add(skillsField, 1, 5);
+
+        dialog.getDialogPane().setContent(grid);
+
+        // Convert the result of the dialog to a UserProfile object when the Register button is clicked
         dialog.setResultConverter(dialogButton -> {
-            if (dialogButton == addButton) {
-                String fullName = fullNameField.getText();
-                String hobby = hobbyField.getText();
-                String futurePlan = futurePlanField.getText();
-                String favoriteMusic = favoriteMusicField.getText();
-                String favoriteFilm = favoriteFilmField.getText();
-                String skills = skillsField.getText();
-
-                UserProfile userProfile = new UserProfile(fullName, hobby, futurePlan, favoriteMusic, favoriteFilm, skills);
-                userProfiles.add(userProfile);
-                return userProfile;
+            if (dialogButton == registerButtonType) {
+                return new UserProfile(
+                        fullNameField.getText(),
+                        hobbyField.getText(),
+                        futurePlanField.getText(),
+                        favoriteMusicField.getText(),
+                        favoriteFilmField.getText(),
+                        skillsField.getText()
+                );
             }
             return null;
         });
 
-        dialog.showAndWait();
+        // Show the dialog and handle the result
+        dialog.showAndWait().ifPresent(userProfile -> {
+            addUserProfile(userProfile);
+        });
+    }
+
+    // Adds a user profile to the list and database
+    private void addUserProfile(UserProfile userProfile) {
+        userProfiles.add(userProfile);
+        saveUserProfileToDatabase(userProfile);
     }
 
     // Shows a dialog for updating an existing user profile
     private void showUpdateDialog() {
         UserProfile selectedUserProfile = listView.getSelectionModel().getSelectedItem();
-        if (selectedUserProfile == null) {
-            showAlert(Alert.AlertType.WARNING, "Select student first", "Please select student first to update their information");
-            return;
+        if (selectedUserProfile != null) {
+            Dialog<UserProfile> dialog = new Dialog<>();
+            dialog.setTitle("Update user");
+
+            // Set the button types
+            ButtonType updateButtonType = new ButtonType("Update", ButtonBar.ButtonData.OK_DONE);
+            dialog.getDialogPane().getButtonTypes().addAll(updateButtonType, ButtonType.CANCEL);
+
+            // Create the grid layout for the dialog
+            GridPane grid = new GridPane();
+            grid.setHgap(10);
+            grid.setVgap(10);
+            grid.setPadding(new Insets(20, 150, 10, 10));
+
+            fullNameField = new TextField(selectedUserProfile.getFullName());
+            hobbyField = new TextField(selectedUserProfile.getHobby());
+            futurePlanField = new TextField(selectedUserProfile.getFuturePlan());
+            favoriteMusicField = new TextField(selectedUserProfile.getFavoriteMusic());
+            favoriteFilmField = new TextField(selectedUserProfile.getFavoriteFilm());
+            skillsField = new TextField(selectedUserProfile.getSkills());
+
+            grid.add(new Label("Full Name:"), 0, 0);
+            grid.add(fullNameField, 1, 0);
+            grid.add(new Label("Hobby:"), 0, 1);
+            grid.add(hobbyField, 1, 1);
+            grid.add(new Label("Future Plan:"), 0, 2);
+            grid.add(futurePlanField, 1, 2);
+            grid.add(new Label("Favorite Music:"), 0, 3);
+            grid.add(favoriteMusicField, 1, 3);
+            grid.add(new Label("Favorite Film:"), 0, 4);
+            grid.add(favoriteFilmField, 1, 4);
+            grid.add(new Label("Skills:"), 0, 5);
+            grid.add(skillsField, 1, 5);
+
+            dialog.getDialogPane().setContent(grid);
+
+            // Convert the result of the dialog to a UserProfile object when the Update button is clicked
+            dialog.setResultConverter(dialogButton -> {
+                if (dialogButton == updateButtonType) {
+                    return new UserProfile(
+                            fullNameField.getText(),
+                            hobbyField.getText(),
+                            futurePlanField.getText(),
+                            favoriteMusicField.getText(),
+                            favoriteFilmField.getText(),
+                            skillsField.getText()
+                    );
+                }
+                return null;
+            });
+
+            // Show the dialog and handle the result
+            dialog.showAndWait().ifPresent(updatedUserProfile -> {
+                updateUserProfile(selectedUserProfile, updatedUserProfile);
+            });
         }
-
-        Dialog<UserProfile> dialog = new Dialog<>();
-        dialog.setTitle("Update student Profile");
-
-        // Set the button types
-        ButtonType updateButton = new ButtonType("Update", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(updateButton, ButtonType.CANCEL);
-
-        GridPane gridPane = createGridPane();
-
-        // Populate the input fields with the selected user profile's data
-        fullNameField.setText(selectedUserProfile.getFullName());
-        hobbyField.setText(selectedUserProfile.getHobby());
-        futurePlanField.setText(selectedUserProfile.getFuturePlan());
-        favoriteMusicField.setText(selectedUserProfile.getFavoriteMusic());
-        favoriteFilmField.setText(selectedUserProfile.getFavoriteFilm());
-        skillsField.setText(selectedUserProfile.getSkills());
-
-        dialog.getDialogPane().setContent(gridPane);
-
-        dialog.setResultConverter(dialogButton -> {
-            if (dialogButton == updateButton) {
-                // Update the selected user profile with the new data
-                selectedUserProfile.setFullName(fullNameField.getText());
-                selectedUserProfile.setHobby(hobbyField.getText());
-                selectedUserProfile.setFuturePlan(futurePlanField.getText());
-                selectedUserProfile.setFavoriteMusic(favoriteMusicField.getText());
-                selectedUserProfile.setFavoriteFilm(favoriteFilmField.getText());
-                selectedUserProfile.setSkills(skillsField.getText());
-                return selectedUserProfile;
-            }
-            return null;
-        });
-
-        dialog.showAndWait();
     }
 
-    // Removes the selected user profile from the list
+    // Updates a user profile in the list and database
+    private void updateUserProfile(UserProfile oldUserProfile, UserProfile updatedUserProfile) {
+        userProfiles.remove(oldUserProfile);
+        userProfiles.add(updatedUserProfile);
+        updateUserProfileInDatabase(oldUserProfile, updatedUserProfile);
+    }
+
+    // Removes a user profile from the list and database
     private void removeUserProfile() {
         UserProfile selectedUserProfile = listView.getSelectionModel().getSelectedItem();
-        if (selectedUserProfile == null) {
-            showAlert(Alert.AlertType.WARNING, "No student is selected.", "Please select a student to remove.");
-            return;
-        }
-
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Confirmation");
-        alert.setHeaderText("Remove Student Profile");
-        alert.setContentText("Are you sure you want to remove the selected user profile?");
-
-        Optional<ButtonType> result = alert.showAndWait();
-        if (result.isPresent() && result.get() == ButtonType.OK) {
+        if (selectedUserProfile != null) {
             userProfiles.remove(selectedUserProfile);
+            removeUserProfileFromDatabase(selectedUserProfile);
         }
     }
 
@@ -210,122 +235,106 @@ public class PersonalInfoApp extends Application {
     private void saveUserProfiles() {
         try (PrintWriter writer = new PrintWriter(new FileWriter(FILE_PATH))) {
             for (UserProfile userProfile : userProfiles) {
-                // Write each user profile's data to a new line in the file
-                writer.println(userProfile.getFullName());
-                writer.println(userProfile.getHobby());
-                writer.println(userProfile.getFuturePlan());
-                writer.println(userProfile.getFavoriteMusic());
-                writer.println(userProfile.getFavoriteFilm());
-                writer.println(userProfile.getSkills());
+                writer.println(userProfile.toFileString());
             }
+            writer.flush();
         } catch (IOException e) {
-            showAlert(Alert.AlertType.ERROR, "Error", "Failed to save user profiles.");
+            e.printStackTrace();
         }
     }
 
-    // Loads user profiles from a file
-    private void loadUserProfiles() {
-        File file = new File(FILE_PATH);
-        if (!file.exists())
-            return;
-
+    // Loads the user profiles from the file
+    private void loadUserProfilesFromFile() {
         try (BufferedReader reader = new BufferedReader(new FileReader(FILE_PATH))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                String fullName = line;
-                String hobby = reader.readLine();
-                String futurePlan = reader.readLine();
-                String favoriteMusic = reader.readLine();
-                String favoriteFilm = reader.readLine();
-                String skills = reader.readLine();
-
-                UserProfile userProfile = new UserProfile(fullName, hobby, futurePlan, favoriteMusic, favoriteFilm, skills);
-                userProfiles.add(userProfile);
+                UserProfile userProfile = UserProfile.fromFileString(line);
+                if (userProfile != null) {
+                    userProfiles.add(userProfile);
+                }
             }
         } catch (IOException e) {
-            showAlert(Alert.AlertType.ERROR, "Error", "Failed to load user profiles.");
+            e.printStackTrace();
         }
     }
 
-    // Creates a grid pane with input fields for user profile data
-    private GridPane createGridPane() {
-        GridPane gridPane = new GridPane();
-        gridPane.setHgap(10);
-        gridPane.setVgap(10);
-
-        Label fullNameLabel = new Label("Student full Name:");
-        fullNameField = new TextField();
-        fullNameField.setStyle("-fx-border-color: green;" +
-                "-fx-border-width: 0 0 2 0;" +
-                "-fx-border-radius: 0;" +
-                "-fx-padding: 0;" +
-                "-fx-background-color: transparent;" +
-                "-fx-text-fill: black;");
-
-        Label hobbyLabel = new Label("Student Hobby:");
-        hobbyField = new TextField();
-        hobbyField.setStyle("-fx-border-color: green;" +
-                "-fx-border-width: 0 0 2 0;" +
-                "-fx-border-radius: 0;" +
-                "-fx-padding: 0;" +
-                "-fx-background-color: transparent;" +
-                "-fx-text-fill: black;");
-        Label futurePlanLabel = new Label("Student Future Plan:");
-        futurePlanField = new TextField();
-        futurePlanField.setStyle("-fx-border-color: green;" +
-                "-fx-border-width: 0 0 2 0;" +
-                "-fx-border-radius: 0;" +
-                "-fx-padding: 0;" +
-                "-fx-background-color: transparent;" +
-                "-fx-text-fill: black;");
-        Label favoriteMusicLabel = new Label("Student Favorite Music:");
-        favoriteMusicField = new TextField();
-        favoriteMusicField.setStyle("-fx-border-color: green;" +
-                "-fx-border-width: 0 0 2 0;" +
-                "-fx-border-radius: 0;" +
-                "-fx-padding: 0;" +
-                "-fx-background-color: transparent;" +
-                "-fx-text-fill: black;");
-        Label favoriteFilmLabel = new Label("Student Favorite Film:");
-        favoriteFilmField = new TextField();
-        favoriteFilmField.setStyle("-fx-border-color: green;" +
-                "-fx-border-width: 0 0 2 0;" +
-                "-fx-border-radius: 0;" +
-                "-fx-padding: 0;" +
-                "-fx-background-color: transparent;" +
-                "-fx-text-fill: black;");
-        Label skillsLabel = new Label("Skills:");
-
-        skillsField = new TextField();
-        skillsField.setStyle("-fx-border-color: green;" +
-                "-fx-border-width: 0 0 2 0;" +
-                "-fx-border-radius: 0;" +
-                "-fx-padding: 0;" +
-                "-fx-background-color: transparent;" +
-                "-fx-text-fill: black;");
-
-        gridPane.add(fullNameLabel, 0, 0);
-        gridPane.add(fullNameField, 1, 0);
-        gridPane.add(hobbyLabel, 0, 1);
-        gridPane.add(hobbyField, 1, 1);
-        gridPane.add(futurePlanLabel, 0, 2);
-        gridPane.add(futurePlanField, 1, 2);
-        gridPane.add(favoriteMusicLabel, 0, 3);
-        gridPane.add(favoriteMusicField, 1, 3);
-        gridPane.add(favoriteFilmLabel, 0, 4);
-        gridPane.add(favoriteFilmField, 1, 4);
-        gridPane.add(skillsLabel, 0, 5);
-        gridPane.add(skillsField, 1, 5);
-
-        return gridPane;
+    // Loads the user profiles from the database
+    private void loadUserProfilesFromDatabase() {
+        try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD);
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT * FROM user_profiles")) {
+            while (resultSet.next()) {
+                UserProfile userProfile = new UserProfile(
+                        resultSet.getString("full_name"),
+                        resultSet.getString("hobby"),
+                        resultSet.getString("future_plan"),
+                        resultSet.getString("favorite_music"),
+                        resultSet.getString("favorite_film"),
+                        resultSet.getString("skills")
+                );
+                userProfiles.add(userProfile);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
-    // Shows an alert with the specified type, title, and message
-    private void showAlert(Alert.AlertType alertType, String title, String message) {
-        Alert alert = new Alert(alertType);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+    // Saves a user profile to the database
+    private void saveUserProfileToDatabase(UserProfile userProfile) {
+        try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD);
+             PreparedStatement statement = connection.prepareStatement(
+                     "INSERT INTO user_profiles (full_name, hobby, future_plan, favorite_music, favorite_film, skills) " +
+                             "VALUES (?, ?, ?, ?, ?, ?)")) {
+            statement.setString(1, userProfile.getFullName());
+            statement.setString(2, userProfile.getHobby());
+            statement.setString(3, userProfile.getFuturePlan());
+            statement.setString(4, userProfile.getFavoriteMusic());
+            statement.setString(5, userProfile.getFavoriteFilm());
+            statement.setString(6, userProfile.getSkills());
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Updates a user profile in the database
+    private void updateUserProfileInDatabase(UserProfile oldUserProfile, UserProfile updatedUserProfile) {
+        try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD);
+             PreparedStatement statement = connection.prepareStatement(
+                     "UPDATE user_profiles SET full_name=?, hobby=?, future_plan=?, favorite_music=?, favorite_film=?, skills=? " +
+                             "WHERE full_name=? AND hobby=? AND future_plan=? AND favorite_music=? AND favorite_film=? AND skills=?")) {
+            statement.setString(1, updatedUserProfile.getFullName());
+            statement.setString(2, updatedUserProfile.getHobby());
+            statement.setString(3, updatedUserProfile.getFuturePlan());
+            statement.setString(4, updatedUserProfile.getFavoriteMusic());
+            statement.setString(5, updatedUserProfile.getFavoriteFilm());
+            statement.setString(6, updatedUserProfile.getSkills());
+            statement.setString(7, oldUserProfile.getFullName());
+            statement.setString(8, oldUserProfile.getHobby());
+            statement.setString(9, oldUserProfile.getFuturePlan());
+            statement.setString(10, oldUserProfile.getFavoriteMusic());
+            statement.setString(11, oldUserProfile.getFavoriteFilm());
+            statement.setString(12, oldUserProfile.getSkills());
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Removes a user profile from the database
+    private void removeUserProfileFromDatabase(UserProfile userProfile) {
+        try (Connection connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD);
+             PreparedStatement statement = connection.prepareStatement(
+                     "DELETE FROM user_profiles WHERE full_name=? AND hobby=? AND future_plan=? AND favorite_music=? AND favorite_film=? AND skills=?")) {
+            statement.setString(1, userProfile.getFullName());
+            statement.setString(2, userProfile.getHobby());
+            statement.setString(3, userProfile.getFuturePlan());
+            statement.setString(4, userProfile.getFavoriteMusic());
+            statement.setString(5, userProfile.getFavoriteFilm());
+            statement.setString(6, userProfile.getSkills());
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }

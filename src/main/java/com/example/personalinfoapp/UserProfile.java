@@ -21,52 +21,44 @@ public class UserProfile {
         return fullName;
     }
 
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
     public String getHobby() {
         return hobby;
-    }
-
-    public void setHobby(String hobby) {
-        this.hobby = hobby;
     }
 
     public String getFuturePlan() {
         return futurePlan;
     }
 
-    public void setFuturePlan(String futurePlan) {
-        this.futurePlan = futurePlan;
-    }
-
     public String getFavoriteMusic() {
         return favoriteMusic;
-    }
-
-    public void setFavoriteMusic(String favoriteMusic) {
-        this.favoriteMusic = favoriteMusic;
     }
 
     public String getFavoriteFilm() {
         return favoriteFilm;
     }
 
-    public void setFavoriteFilm(String favoriteFilm) {
-        this.favoriteFilm = favoriteFilm;
-    }
-
     public String getSkills() {
         return skills;
     }
 
-    public void setSkills(String skills) {
-        this.skills = skills;
+    public String toFileString() {
+        return fullName + "," + hobby + "," + futurePlan + "," + favoriteMusic + "," + favoriteFilm + "," + skills;
+    }
+
+    public static UserProfile fromFileString(String fileString) {
+        String[] fields = fileString.split(",");
+        String fullName = fields[0];
+        String hobby = fields[1];
+        String futurePlan = fields[2];
+        String favoriteMusic = fields[3];
+        String favoriteFilm = fields[4];
+        String skills = fields[5];
+
+        return new UserProfile(fullName, hobby, futurePlan, favoriteMusic, favoriteFilm, skills);
     }
 
     @Override
     public String toString() {
-        return fullName;
+        return fullName; // Or any other field you want to display as the string representation
     }
 }
